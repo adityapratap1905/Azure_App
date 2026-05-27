@@ -9,6 +9,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMessageHandler('flutter/assets', (message) async {
+        final key = utf8.decode(message!.buffer.asUint8List());
+        if (key == 'AssetManifest.bin') {
+          return const StandardMessageCodec().encodeMessage(<String, Object>{});
+        }
+        return null;
+      });
 
   testWidgets('setup screen renders quiz controls', (tester) async {
     SharedPreferences.setMockInitialValues({});

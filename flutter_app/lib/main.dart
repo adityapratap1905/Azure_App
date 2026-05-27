@@ -387,6 +387,7 @@ class _QuizHomeState extends State<QuizHome> {
     });
     try {
       final questions = await widget.repository.getQuestionsForConfig(config);
+      if (!mounted) return;
       if (questions.isEmpty) {
         throw StateError('No questions found for ${config.examType}.');
       }
@@ -399,6 +400,7 @@ class _QuizHomeState extends State<QuizHome> {
         _tab = AppTab.practice;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
