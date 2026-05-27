@@ -290,36 +290,17 @@ class _ProfileSummaryCard extends StatelessWidget {
             profileImageBytes: profileImageBytes,
             onUploadPhoto: onUploadPhoto,
           );
-          final bottomProgress = _ProfileBottomProgress(
-            value: selectedTrack.progress,
-            color: selectedTrack.accent,
-          );
 
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                profile,
-                const SizedBox(height: 16),
-                levelCard,
-                const SizedBox(height: 14),
-                bottomProgress,
-              ],
+              children: [profile, const SizedBox(height: 18), levelCard],
             );
           }
 
           return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: profile),
-                  const SizedBox(width: 18),
-                  SizedBox(width: 132, child: levelCard),
-                ],
-              ),
-              const SizedBox(height: 14),
-              bottomProgress,
-            ],
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [profile, const SizedBox(height: 18), levelCard],
           );
         },
       ),
@@ -498,29 +479,6 @@ class _ProfilePhotoButton extends StatelessWidget {
   }
 }
 
-class _ProfileBottomProgress extends StatelessWidget {
-  const _ProfileBottomProgress({required this.value, required this.color});
-
-  final double value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: LinearProgressIndicator(
-        value: value.clamp(.0, 1.0),
-        minHeight: 8,
-        backgroundColor: colorScheme.surfaceContainerHighest.withValues(
-          alpha: .82,
-        ),
-        color: color,
-      ),
-    );
-  }
-}
-
 class _LevelCard extends StatelessWidget {
   const _LevelCard({required this.score, required this.color});
 
@@ -530,8 +488,10 @@ class _LevelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final xp = math.max(180, score * 7).clamp(0, 1000);
+    final progress = xp / 1000;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .10),
         borderRadius: BorderRadius.circular(AppRadii.md),
@@ -543,7 +503,19 @@ class _LevelCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.workspace_premium_rounded, color: color, size: 24),
+              Container(
+                height: 34,
+                width: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  color: color,
+                  size: 21,
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -556,33 +528,47 @@ class _LevelCard extends StatelessWidget {
                   ),
                 ),
               ),
+              Text(
+                'Lv. 12',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Lv. 12',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.pill),
             child: LinearProgressIndicator(
-              value: score.clamp(0, 100) / 100,
-              minHeight: 7,
-              backgroundColor: color.withValues(alpha: .14),
+              value: progress,
+              minHeight: 8,
+              backgroundColor: color.withValues(alpha: .16),
               color: color,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${math.max(180, score * 7)} / 1,000 XP',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w800,
-            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$xp / 1,000 XP',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
         ],
       ),
