@@ -142,7 +142,7 @@ class _ProfileHeader extends StatelessWidget {
               border: Border.all(color: Colors.white.withValues(alpha: .26)),
             ),
             child: const Text(
-              'S',
+              'A',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 30,
@@ -156,7 +156,7 @@ class _ProfileHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Saurabh Sharma',
+                  'Alex',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
