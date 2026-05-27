@@ -6,10 +6,10 @@ class PremiumScrollView extends StatelessWidget {
     required this.child,
     this.maxWidth = 720,
     this.padding = const EdgeInsets.fromLTRB(
-      AppSpacing.md,
-      AppSpacing.md,
-      AppSpacing.md,
-      AppSpacing.screenBottom,
+      AppSpacing.section,
+      AppSpacing.section,
+      AppSpacing.section,
+      118,
     ),
   });
 
@@ -66,11 +66,11 @@ class PremiumCard extends StatelessWidget {
           BoxShadow(
             color: Colors.black.withValues(
               alpha: Theme.of(context).brightness == Brightness.dark
-                  ? .18
-                  : .06,
+                  ? .14
+                  : .045,
             ),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),

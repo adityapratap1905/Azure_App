@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/quiz_models.dart';
 import 'services/question_repository.dart';
@@ -83,151 +87,84 @@ class CloudCertSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF7FBFF),
       body: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 1850),
-        curve: Curves.easeInOutCubic,
+        duration: const Duration(milliseconds: 2100),
+        curve: Curves.easeInOut,
         onEnd: onComplete,
         builder: (context, value, _) {
-          final entrance = Curves.easeOutCubic.transform(
-            (value / .72).clamp(0, 1),
+          final entrance = Curves.easeOutBack.transform(
+            (value / .58).clamp(0, 1),
           );
           final exit = Curves.easeInCubic.transform(
-            ((value - .78) / .22).clamp(0, 1),
+            ((value - .84) / .16).clamp(0, 1),
           );
           final opacity = (1 - exit).clamp(0.0, 1.0);
-          return DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF06132E),
-                  Color(0xFF0B3F94),
-                  Color(0xFF121A55),
-                  Color(0xFF08111F),
-                ],
-              ),
-            ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _SplashBackdropPainter(progress: value),
-                  ),
-                ),
-                Positioned(
-                  left: -70 + (20 * entrance),
-                  top: 90,
-                  child: _SplashOrb(
-                    size: 170,
-                    color: AppColors.azure.withValues(alpha: .18),
-                  ),
-                ),
-                Positioned(
-                  right: -52 - (16 * exit),
-                  bottom: 120,
-                  child: _SplashOrb(
-                    size: 210,
-                    color: AppColors.purple.withValues(alpha: .16),
-                  ),
-                ),
-                Center(
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Transform.scale(
-                      scale: .94 + (.06 * entrance) - (.04 * exit),
-                      child: Transform.translate(
-                        offset: Offset(0, (1 - entrance) * 18),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CustomPaint(
-                              painter: _SplashRingPainter(progress: value),
-                              child: Container(
-                                height: 104,
-                                width: 104,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: .10),
-                                  borderRadius: BorderRadius.circular(30),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: .28),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.cyan.withValues(
-                                        alpha: .28,
-                                      ),
-                                      blurRadius: 42,
-                                      offset: const Offset(0, 18),
-                                    ),
-                                  ],
+          final bob = math.sin(value * math.pi * 4) * 7;
+          return SafeArea(
+            child: Center(
+              child: Opacity(
+                opacity: opacity,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - entrance) * 26 + bob - (exit * 22)),
+                  child: Transform.scale(
+                    scale: .86 + (.14 * entrance),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            height: 184,
+                            width: 184,
+                            child: CustomPaint(
+                              painter: _SplashMascotPainter(progress: value),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          Text(
+                            'CloudCert Studio',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  color: AppColors.azureDeep,
+                                  fontWeight: FontWeight.w900,
                                 ),
-                                child: Container(
-                                  height: 66,
-                                  width: 66,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        Color(0xFFFFFFFF),
-                                        Color(0xFFD9ECFF),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(22),
-                                  ),
-                                  child: const Icon(
-                                    Icons.workspace_premium_rounded,
-                                    color: AppColors.azure,
-                                    size: 34,
-                                  ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Get ready for smarter practice',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AppColors.muted,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 32),
+                          SizedBox(
+                            width: 170,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
+                              child: LinearProgressIndicator(
+                                value: value.clamp(0, 1),
+                                minHeight: 6,
+                                color: AppColors.azure,
+                                backgroundColor: AppColors.azure.withValues(
+                                  alpha: .12,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 22),
-                            Text(
-                              'CloudCert Studio',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                            const SizedBox(height: 7),
-                            Text(
-                              'Certification practice, refined.',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Colors.white.withValues(alpha: .74),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: 154,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.pill,
-                                ),
-                                child: LinearProgressIndicator(
-                                  value: value.clamp(0, 1),
-                                  minHeight: 4,
-                                  color: Colors.white,
-                                  backgroundColor: Colors.white.withValues(
-                                    alpha: .16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           );
         },
@@ -236,110 +173,141 @@ class CloudCertSplashScreen extends StatelessWidget {
   }
 }
 
-class _SplashOrb extends StatelessWidget {
-  const _SplashOrb({required this.size, required this.color});
+class _SplashMascotPainter extends CustomPainter {
+  const _SplashMascotPainter({required this.progress});
 
-  final double size;
-  final Color color;
+  final double progress;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: size,
-      width: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [color, Colors.transparent]),
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final wave = math.sin(progress * math.pi * 7);
+    final float = math.sin(progress * math.pi * 4) * h * .025;
+
+    canvas.save();
+    canvas.translate(0, float);
+
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: .08)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(w * .50, h * .88),
+        width: w * .52,
+        height: h * .08,
       ),
+      shadowPaint,
     );
-  }
-}
 
-class _SplashBackdropPainter extends CustomPainter {
-  const _SplashBackdropPainter({required this.progress});
+    final bodyRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(w * .50, h * .59),
+        width: w * .48,
+        height: h * .38,
+      ),
+      Radius.circular(w * .12),
+    );
+    canvas.drawRRect(
+      bodyRect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.azure, AppColors.cyan],
+        ).createShader(bodyRect.outerRect),
+    );
 
-  final double progress;
+    final neckPaint = Paint()..color = const Color(0xFFFFD7BA);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(w * .50, h * .38),
+          width: w * .16,
+          height: h * .14,
+        ),
+        Radius.circular(w * .05),
+      ),
+      neckPaint,
+    );
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = Colors.white.withValues(alpha: .055)
-      ..strokeWidth = 1;
-    final drift = progress * 24;
-    for (var x = -size.height; x < size.width; x += 46) {
-      canvas.drawLine(
-        Offset(x + drift, size.height),
-        Offset(x + size.height + drift, 0),
-        linePaint,
-      );
-    }
-    for (var y = 0.0; y < size.height; y += 54) {
-      canvas.drawLine(
-        Offset(0, y + drift),
-        Offset(size.width, y + 42 + drift),
-        linePaint,
-      );
-    }
+    final headPaint = Paint()..color = const Color(0xFFFFCFAF);
+    canvas.drawCircle(Offset(w * .50, h * .27), w * .18, headPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(w * .50, h * .24), radius: w * .19),
+      math.pi,
+      math.pi,
+      true,
+      Paint()..color = AppColors.azureDeep,
+    );
 
-    final starPaint = Paint()..color = Colors.white.withValues(alpha: .26);
-    for (final point in const [
-      Offset(.22, .24),
-      Offset(.70, .18),
-      Offset(.78, .66),
-      Offset(.32, .74),
-      Offset(.52, .34),
-    ]) {
-      canvas.drawCircle(
-        Offset(point.dx * size.width, point.dy * size.height),
-        1.4,
-        starPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SplashBackdropPainter oldDelegate) {
-    return oldDelegate.progress != progress;
-  }
-}
-
-class _SplashRingPainter extends CustomPainter {
-  const _SplashRingPainter({required this.progress});
-
-  final double progress;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final ringPaint = Paint()
+    final eyePaint = Paint()..color = AppColors.ink;
+    canvas.drawCircle(Offset(w * .44, h * .28), 2.5, eyePaint);
+    canvas.drawCircle(Offset(w * .56, h * .28), 2.5, eyePaint);
+    final smilePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: .18);
+      ..color = AppColors.ink.withValues(alpha: .78);
     canvas.drawArc(
-      rect.deflate(4),
-      -math.pi / 2,
-      math.pi * 2,
+      Rect.fromCenter(
+        center: Offset(w * .50, h * .31),
+        width: w * .10,
+        height: h * .045,
+      ),
+      .12,
+      math.pi - .24,
       false,
-      ringPaint,
+      smilePaint,
     );
 
-    final activePaint = Paint()
+    final armPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
+      ..strokeWidth = w * .055
       ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: .92);
-    canvas.drawArc(
-      rect.deflate(4),
-      -math.pi / 2,
-      math.pi * 2 * progress.clamp(0, 1),
-      false,
-      activePaint,
+      ..color = const Color(0xFFFFCFAF);
+    canvas.drawLine(
+      Offset(w * .33, h * .48),
+      Offset(w * .22, h * .62),
+      armPaint,
     );
+    canvas.drawLine(
+      Offset(w * .67, h * .48),
+      Offset(w * (.78 + wave * .03), h * (.35 - wave * .025)),
+      armPaint,
+    );
+
+    final bookRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(w * .50, h * .64),
+        width: w * .44,
+        height: h * .20,
+      ),
+      Radius.circular(w * .04),
+    );
+    canvas.drawRRect(bookRect, Paint()..color = Colors.white);
+    canvas.drawLine(
+      Offset(w * .50, h * .55),
+      Offset(w * .50, h * .73),
+      Paint()
+        ..color = AppColors.outline
+        ..strokeWidth = 1.4,
+    );
+    canvas.drawCircle(
+      Offset(w * .50, h * .63),
+      w * .045,
+      Paint()..color = AppColors.warning,
+    );
+    canvas.drawCircle(
+      Offset(w * .50, h * .63),
+      w * .022,
+      Paint()..color = Colors.white,
+    );
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _SplashRingPainter oldDelegate) {
+  bool shouldRepaint(covariant _SplashMascotPainter oldDelegate) {
     return oldDelegate.progress != progress;
   }
 }
@@ -643,15 +611,15 @@ class CloudCertBottomNav extends StatelessWidget {
             Container(
               height: 70,
               margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
                 color: colorScheme.surface.withValues(alpha: .96),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: colorScheme.outlineVariant),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: .10),
-                    blurRadius: 24,
+                    color: Colors.black.withValues(alpha: .08),
+                    blurRadius: 22,
                     offset: const Offset(0, 10),
                   ),
                 ],
@@ -707,22 +675,40 @@ class _BottomNavItem extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadii.md),
       onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+      child: AnimatedContainer(
+        duration: AppDurations.fast,
+        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: .08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 3),
+            AnimatedContainer(
+              duration: AppDurations.fast,
+              height: 4,
+              width: selected ? 5 : 0,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
