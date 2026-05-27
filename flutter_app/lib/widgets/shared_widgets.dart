@@ -106,7 +106,7 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
@@ -639,136 +639,6 @@ class ProgressRing extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ChoiceGroup<T> extends StatelessWidget {
-  const _ChoiceGroup({
-    required this.title,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final String title;
-  final T value;
-  final Map<T, (String, String, IconData)> options;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 720
-                ? 3
-                : constraints.maxWidth >= 470
-                ? 2
-                : 1;
-            final tileWidth = columns == 1
-                ? constraints.maxWidth
-                : (constraints.maxWidth - (10 * (columns - 1))) / columns;
-            return Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: options.entries.map((entry) {
-                final selected = entry.key == value;
-                return SizedBox(
-                  width: tileWidth,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                      onTap: () => onChanged(entry.key),
-                      child: AnimatedContainer(
-                        duration: AppDurations.fast,
-                        curve: Curves.easeOut,
-                        constraints: const BoxConstraints(minHeight: 108),
-                        padding: const EdgeInsets.all(AppSpacing.card),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppRadii.md),
-                          border: Border.all(
-                            color: selected
-                                ? colorScheme.primary
-                                : colorScheme.outlineVariant,
-                            width: selected ? 1.8 : 1,
-                          ),
-                          color: selected
-                              ? colorScheme.primaryContainer.withValues(
-                                  alpha: .72,
-                                )
-                              : colorScheme.surface,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  height: 36,
-                                  width: 36,
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? colorScheme.primary
-                                        : colorScheme.surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadii.sm,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    entry.value.$3,
-                                    color: selected
-                                        ? colorScheme.onPrimary
-                                        : colorScheme.onSurfaceVariant,
-                                    size: 20,
-                                  ),
-                                ),
-                                const Spacer(),
-                                AnimatedOpacity(
-                                  opacity: selected ? 1 : 0,
-                                  duration: AppDurations.fast,
-                                  child: Icon(
-                                    Icons.check_circle_rounded,
-                                    color: colorScheme.primary,
-                                    size: 20,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              entry.value.$1,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              entry.value.$2,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            );
-          },
-        ),
-      ],
     );
   }
 }
