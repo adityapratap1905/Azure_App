@@ -13,6 +13,7 @@ class QuizScreen extends StatefulWidget {
     required this.onNext,
     required this.onPrevious,
     required this.onSkip,
+    required this.onExit,
   });
 
   final QuizConfig config;
@@ -25,6 +26,7 @@ class QuizScreen extends StatefulWidget {
   final VoidCallback onNext;
   final VoidCallback onPrevious;
   final VoidCallback onSkip;
+  final VoidCallback onExit;
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -56,6 +58,7 @@ class _QuizScreenState extends State<QuizScreen> {
             mode: widget.config.mode,
             difficulty: widget.question.difficulty,
             bookmarked: bookmarked,
+            onExit: _showExitConfirmation,
             onBookmark: () {
               setState(() {
                 bookmarked
@@ -138,6 +141,31 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
+  Future<void> _showExitConfirmation() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Exit this quiz?'),
+          content: const Text(
+            'Your current answers in this session will be discarded.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Stay'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Exit'),
+            ),
+          ],
+        );
+      },
+    );
+    if (shouldExit == true && mounted) widget.onExit();
+  }
+
   void _handlePrimaryAction() {
     if (_isLastQuestion && _isExamMode) {
       _showSubmitConfirmation();
@@ -188,6 +216,7 @@ class _PracticeTopBar extends StatelessWidget {
     required this.mode,
     required this.difficulty,
     required this.bookmarked,
+    required this.onExit,
     required this.onBookmark,
     required this.timer,
   });
@@ -196,6 +225,7 @@ class _PracticeTopBar extends StatelessWidget {
   final QuizMode mode;
   final String difficulty;
   final bool bookmarked;
+  final VoidCallback onExit;
   final VoidCallback onBookmark;
   final Widget timer;
 
@@ -215,7 +245,7 @@ class _PracticeTopBar extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${track.code} • ${difficulty.toUpperCase()}',
+                '${track.code} - ${difficulty.toUpperCase()}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w800,
@@ -225,6 +255,12 @@ class _PracticeTopBar extends StatelessWidget {
           ),
         ),
         timer,
+        const SizedBox(width: 8),
+        IconButton.filledTonal(
+          tooltip: 'Exit quiz',
+          onPressed: onExit,
+          icon: const Icon(Icons.close_rounded),
+        ),
         const SizedBox(width: 8),
         IconButton.filledTonal(
           tooltip: bookmarked ? 'Remove bookmark' : 'Bookmark question',
