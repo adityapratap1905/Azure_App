@@ -34,6 +34,7 @@ class AzureQuizApp extends StatefulWidget {
 
 class _AzureQuizAppState extends State<AzureQuizApp> {
   final ThemeController _themeController = ThemeController();
+  bool _showSplash = true;
 
   @override
   void initState() {
@@ -58,13 +59,288 @@ class _AzureQuizAppState extends State<AzureQuizApp> {
           themeMode: _themeController.themeMode,
           theme: _buildTheme(Brightness.light),
           darkTheme: _buildTheme(Brightness.dark),
-          home: QuizHome(
-            repository: widget.repository,
-            themeController: _themeController,
-          ),
+          home: _showSplash
+              ? CloudCertSplashScreen(
+                  onComplete: () {
+                    if (mounted) setState(() => _showSplash = false);
+                  },
+                )
+              : QuizHome(
+                  repository: widget.repository,
+                  themeController: _themeController,
+                ),
         );
       },
     );
+  }
+}
+
+class CloudCertSplashScreen extends StatelessWidget {
+  const CloudCertSplashScreen({super.key, required this.onComplete});
+
+  final VoidCallback onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 1850),
+        curve: Curves.easeInOutCubic,
+        onEnd: onComplete,
+        builder: (context, value, _) {
+          final entrance = Curves.easeOutCubic.transform(
+            (value / .72).clamp(0, 1),
+          );
+          final exit = Curves.easeInCubic.transform(
+            ((value - .78) / .22).clamp(0, 1),
+          );
+          final opacity = (1 - exit).clamp(0.0, 1.0);
+          return DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF06132E),
+                  Color(0xFF0B3F94),
+                  Color(0xFF121A55),
+                  Color(0xFF08111F),
+                ],
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _SplashBackdropPainter(progress: value),
+                  ),
+                ),
+                Positioned(
+                  left: -70 + (20 * entrance),
+                  top: 90,
+                  child: _SplashOrb(
+                    size: 170,
+                    color: AppColors.azure.withValues(alpha: .18),
+                  ),
+                ),
+                Positioned(
+                  right: -52 - (16 * exit),
+                  bottom: 120,
+                  child: _SplashOrb(
+                    size: 210,
+                    color: AppColors.purple.withValues(alpha: .16),
+                  ),
+                ),
+                Center(
+                  child: Opacity(
+                    opacity: opacity,
+                    child: Transform.scale(
+                      scale: .94 + (.06 * entrance) - (.04 * exit),
+                      child: Transform.translate(
+                        offset: Offset(0, (1 - entrance) * 18),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CustomPaint(
+                              painter: _SplashRingPainter(progress: value),
+                              child: Container(
+                                height: 104,
+                                width: 104,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .10),
+                                  borderRadius: BorderRadius.circular(30),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: .28),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.cyan.withValues(
+                                        alpha: .28,
+                                      ),
+                                      blurRadius: 42,
+                                      offset: const Offset(0, 18),
+                                    ),
+                                  ],
+                                ),
+                                child: Container(
+                                  height: 66,
+                                  width: 66,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color(0xFFFFFFFF),
+                                        Color(0xFFD9ECFF),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(22),
+                                  ),
+                                  child: const Icon(
+                                    Icons.workspace_premium_rounded,
+                                    color: AppColors.azure,
+                                    size: 34,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            Text(
+                              'CloudCert Studio',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              'Certification practice, refined.',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.white.withValues(alpha: .74),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: 154,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadii.pill,
+                                ),
+                                child: LinearProgressIndicator(
+                                  value: value.clamp(0, 1),
+                                  minHeight: 4,
+                                  color: Colors.white,
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: .16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SplashOrb extends StatelessWidget {
+  const _SplashOrb({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: size,
+      width: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color, Colors.transparent]),
+      ),
+    );
+  }
+}
+
+class _SplashBackdropPainter extends CustomPainter {
+  const _SplashBackdropPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final linePaint = Paint()
+      ..color = Colors.white.withValues(alpha: .055)
+      ..strokeWidth = 1;
+    final drift = progress * 24;
+    for (var x = -size.height; x < size.width; x += 46) {
+      canvas.drawLine(
+        Offset(x + drift, size.height),
+        Offset(x + size.height + drift, 0),
+        linePaint,
+      );
+    }
+    for (var y = 0.0; y < size.height; y += 54) {
+      canvas.drawLine(
+        Offset(0, y + drift),
+        Offset(size.width, y + 42 + drift),
+        linePaint,
+      );
+    }
+
+    final starPaint = Paint()..color = Colors.white.withValues(alpha: .26);
+    for (final point in const [
+      Offset(.22, .24),
+      Offset(.70, .18),
+      Offset(.78, .66),
+      Offset(.32, .74),
+      Offset(.52, .34),
+    ]) {
+      canvas.drawCircle(
+        Offset(point.dx * size.width, point.dy * size.height),
+        1.4,
+        starPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SplashBackdropPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class _SplashRingPainter extends CustomPainter {
+  const _SplashRingPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: .18);
+    canvas.drawArc(
+      rect.deflate(4),
+      -math.pi / 2,
+      math.pi * 2,
+      false,
+      ringPaint,
+    );
+
+    final activePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: .92);
+    canvas.drawArc(
+      rect.deflate(4),
+      -math.pi / 2,
+      math.pi * 2 * progress.clamp(0, 1),
+      false,
+      activePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SplashRingPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
@@ -323,6 +599,7 @@ class _QuizHomeState extends State<QuizHome> {
                 onNext: _next,
                 onPrevious: _previous,
                 onSkip: _next,
+                onExit: _restart,
               ),
       AppStep.results => ResultsScreen(result: _result!, onRestart: _restart),
       AppStep.setup => QuizSetupScreen(
