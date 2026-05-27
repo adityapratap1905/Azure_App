@@ -9,7 +9,7 @@ class PremiumScrollView extends StatelessWidget {
       AppSpacing.section,
       AppSpacing.section,
       AppSpacing.section,
-      118,
+      28,
     ),
   });
 

@@ -270,7 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return PremiumScrollView(
       maxWidth: 430,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 124),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

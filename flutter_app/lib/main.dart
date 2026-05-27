@@ -494,7 +494,7 @@ class _QuizHomeState extends State<QuizHome> {
     final child = _buildTab();
 
     return Scaffold(
-      extendBody: true,
+      extendBody: false,
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: AppDurations.medium,
