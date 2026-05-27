@@ -39,7 +39,11 @@ class DashboardScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _DashboardHeader(),
+          _DashboardHeader(
+            streakDays: 7,
+            onSearch: () => _showSearch(context),
+            onNotifications: () => _showNotifications(context),
+          ),
           const SizedBox(height: 16),
           _DashboardHero(
             initialTrack: selectedTrack,
@@ -91,18 +95,338 @@ class DashboardScreen extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               itemCount: topics.length,
               separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (context, index) =>
-                  _TopicMiniCard(topic: topics[index]),
+              itemBuilder: (context, index) => _TopicMiniCard(
+                topic: topics[index],
+                onTap: () => _showCourseDetails(context, topics[index]),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
+  void _showCourseDetails(BuildContext context, StudyTopic topic) {
+    final docs = _documentationForTopic(topic.title);
+    final syllabus = _syllabusForTopic(topic.title);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * .78,
+              ),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: topic.color.withValues(alpha: .14),
+                        foregroundColor: topic.color,
+                        child: Icon(topic.icon),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              topic.title,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Course details, syllabus, and documentation',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _CourseInfoPanel(topic: topic),
+                  const SizedBox(height: 16),
+                  SectionHeader(title: 'Syllabus topics'),
+                  const SizedBox(height: 10),
+                  for (var index = 0; index < syllabus.length; index++)
+                    _SyllabusTile(
+                      index: index + 1,
+                      title: syllabus[index],
+                      color: topic.color,
+                    ),
+                  const SizedBox(height: 16),
+                  SectionHeader(title: 'Documentation'),
+                  const SizedBox(height: 10),
+                  for (final doc in docs)
+                    _DocumentationTile(title: doc.$1, subtitle: doc.$2),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onStartPractice(selectedTrack);
+                    },
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text('Practice this topic'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSearch(BuildContext context) {
+    final parentContext = context;
+    var query = '';
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final normalizedQuery = query.trim().toLowerCase();
+            final matchingTracks = _examTracks.where((track) {
+              if (normalizedQuery.isEmpty) return true;
+              return track.code.toLowerCase().contains(normalizedQuery) ||
+                  track.name.toLowerCase().contains(normalizedQuery) ||
+                  track.category.toLowerCase().contains(normalizedQuery);
+            }).toList();
+            final matchingTopics = _homeTopics(allQuestions).where((topic) {
+              if (normalizedQuery.isEmpty) return true;
+              return topic.title.toLowerCase().contains(normalizedQuery) ||
+                  topic.subtitle.toLowerCase().contains(normalizedQuery);
+            }).toList();
+            final matchingQuestions = allQuestions
+                .where((question) {
+                  if (normalizedQuery.isEmpty) return false;
+                  return question.question.toLowerCase().contains(
+                        normalizedQuery,
+                      ) ||
+                      question.category.toLowerCase().contains(
+                        normalizedQuery,
+                      ) ||
+                      question.examType.toLowerCase().contains(normalizedQuery);
+                })
+                .take(4)
+                .toList();
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  18,
+                  0,
+                  18,
+                  20 + MediaQuery.viewInsetsOf(context).bottom,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * .76,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Search',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          hintText: 'Search exams, topics, or questions',
+                          prefixIcon: Icon(Icons.search_rounded),
+                        ),
+                        onChanged: (value) =>
+                            setModalState(() => query = value),
+                      ),
+                      const SizedBox(height: 14),
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: [
+                            if (matchingTracks.isNotEmpty) ...[
+                              const _SearchGroupLabel('Exams'),
+                              for (final track in matchingTracks)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: CertificationBadgeMark(
+                                    track: track,
+                                    size: 42,
+                                  ),
+                                  title: Text(track.code),
+                                  subtitle: Text(track.name),
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    onSelectTrack(track);
+                                    onStartPractice(track);
+                                  },
+                                ),
+                            ],
+                            if (matchingTopics.isNotEmpty) ...[
+                              const _SearchGroupLabel('Topics'),
+                              for (final topic in matchingTopics)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: CircleAvatar(
+                                    backgroundColor: topic.color.withValues(
+                                      alpha: .14,
+                                    ),
+                                    foregroundColor: topic.color,
+                                    child: Icon(topic.icon, size: 20),
+                                  ),
+                                  title: Text(topic.title),
+                                  subtitle: Text(topic.subtitle),
+                                  trailing: const Icon(
+                                    Icons.play_arrow_rounded,
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _showCourseDetails(parentContext, topic);
+                                  },
+                                ),
+                            ],
+                            if (matchingQuestions.isNotEmpty) ...[
+                              const _SearchGroupLabel('Questions'),
+                              for (final question in matchingQuestions)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(
+                                    Icons.quiz_outlined,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
+                                  title: Text(
+                                    question.question,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    '${question.examType} - ${question.category}',
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    final track = _trackForCode(
+                                      question.examType,
+                                    );
+                                    onSelectTrack(track);
+                                    onStartPractice(track);
+                                  },
+                                ),
+                            ],
+                            if (matchingTracks.isEmpty &&
+                                matchingTopics.isEmpty &&
+                                matchingQuestions.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 28,
+                                ),
+                                child: Text(
+                                  'No matching exams, topics, or questions.',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showNotifications(BuildContext context) {
+    final track = selectedTrack;
+    final count = _countForTrack(questionCounts, track);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Notifications',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 10),
+                _NotificationTile(
+                  icon: Icons.local_fire_department_rounded,
+                  color: AppColors.warning,
+                  title: '7 day learning streak',
+                  subtitle:
+                      'Keep the streak alive with one short practice set.',
+                ),
+                _NotificationTile(
+                  icon: Icons.workspace_premium_rounded,
+                  color: track.accent,
+                  title: '${track.code} practice is ready',
+                  subtitle: count > 0
+                      ? '$count questions are available for ${track.name}.'
+                      : '${track.name} question bank is coming soon.',
+                ),
+                _NotificationTile(
+                  icon: Icons.insights_rounded,
+                  color: AppColors.success,
+                  title: 'Progress review',
+                  subtitle: lastResult == null
+                      ? 'Complete a quiz to unlock your score breakdown.'
+                      : 'Your latest score was ${lastResult!.score}%.',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _DashboardHeader extends StatelessWidget {
-  const _DashboardHeader();
+  const _DashboardHeader({
+    required this.streakDays,
+    required this.onSearch,
+    required this.onNotifications,
+  });
+
+  final int streakDays;
+  final VoidCallback onSearch;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -116,8 +440,19 @@ class _DashboardHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Hello, Alex',
+                  Text.rich(
+                    TextSpan(
+                      text: 'Hello, ',
+                      children: [
+                        TextSpan(
+                          text: 'Alex',
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 4),
@@ -131,12 +466,41 @@ class _DashboardHeader extends StatelessWidget {
                 ],
               ),
             ),
+            Tooltip(
+              message: '$streakDays day learning streak',
+              child: Container(
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: .32),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 15)),
+                    const SizedBox(width: 3),
+                    Text(
+                      '$streakDays',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColors.danger,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
             Stack(
               clipBehavior: Clip.none,
               children: [
                 IconButton(
                   tooltip: 'Notifications',
-                  onPressed: () {},
+                  onPressed: onNotifications,
                   icon: const Icon(Icons.notifications_none_rounded),
                 ),
                 Positioned(
@@ -164,6 +528,7 @@ class _DashboardHeader extends StatelessWidget {
           height: 42,
           child: TextField(
             readOnly: true,
+            onTap: onSearch,
             decoration: InputDecoration(
               hintText: 'Search for exams, topics, or questions',
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
@@ -180,6 +545,180 @@ class _DashboardHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SearchGroupLabel extends StatelessWidget {
+  const _SearchGroupLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: .14),
+        foregroundColor: color,
+        child: Icon(icon, size: 21),
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+    );
+  }
+}
+
+class _CourseInfoPanel extends StatelessWidget {
+  const _CourseInfoPanel({required this.topic});
+
+  final StudyTopic topic;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.card),
+      borderColor: topic.color.withValues(alpha: .28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Learning path',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _courseSummaryForTopic(topic.title),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              StatusBadge(
+                icon: Icons.menu_book_rounded,
+                label: '${_topicDisplayCount(topic.title)} questions',
+                color: topic.color,
+              ),
+              StatusBadge(
+                icon: Icons.speed_rounded,
+                label: topic.difficulty.name,
+                color: AppColors.warning,
+              ),
+              StatusBadge(
+                icon: Icons.timeline_rounded,
+                label: '${(topic.progress * 100).round()}% complete',
+                color: AppColors.success,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SyllabusTile extends StatelessWidget {
+  const _SyllabusTile({
+    required this.index,
+    required this.title,
+    required this.color,
+  });
+
+  final int index;
+  final String title;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.dense),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .08),
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: color.withValues(alpha: .20)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              child: Text(
+                '$index',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DocumentationTile extends StatelessWidget {
+  const _DocumentationTile({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        Icons.article_outlined,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.open_in_new_rounded, size: 18),
     );
   }
 }
@@ -277,29 +816,35 @@ class _DashboardHeroState extends State<_DashboardHero> {
     return PremiumCard(
       padding: EdgeInsets.zero,
       borderColor: Colors.white.withValues(alpha: .16),
-      child: SizedBox(
-        height: 170,
-        child: Stack(
-          children: [
-            PageView.builder(
-              controller: _controller,
-              onPageChanged: _onPageChanged,
-              itemBuilder: (context, index) {
-                final track = _slides[index % _slides.length];
-                return _DashboardHeroSlide(
-                  track: track,
-                  count: _countForTrack(widget.questionCounts, track),
-                  loading: widget.loading,
-                  onExplore: () => widget.onExploreTrack(track),
-                );
-              },
-            ),
-            Positioned(
-              right: 16,
-              bottom: 14,
-              child: _HeroDots(count: _slides.length, selected: _selectedSlide),
-            ),
-          ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        child: SizedBox(
+          height: 170,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _controller,
+                onPageChanged: _onPageChanged,
+                itemBuilder: (context, index) {
+                  final track = _slides[index % _slides.length];
+                  return _DashboardHeroSlide(
+                    track: track,
+                    count: _countForTrack(widget.questionCounts, track),
+                    loading: widget.loading,
+                    onExplore: () => widget.onExploreTrack(track),
+                  );
+                },
+              ),
+              Positioned(
+                right: 16,
+                bottom: 14,
+                child: _HeroDots(
+                  count: _slides.length,
+                  selected: _selectedSlide,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -322,17 +867,31 @@ class _DashboardHeroSlide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = track.available && count > 0;
+    final heroStyle = _heroStyleForTrack(track);
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [track.accent, track.gradientEnd],
+          colors: heroStyle.colors,
         ),
       ),
       child: Stack(
         children: [
-          const Positioned(right: -18, bottom: -16, child: _CloudCluster()),
+          Positioned(
+            right: -18,
+            bottom: -16,
+            child: _HeroBackgroundMark(style: heroStyle),
+          ),
+          Positioned(
+            right: 86,
+            top: 18,
+            child: Icon(
+              heroStyle.icon,
+              color: Colors.white.withValues(alpha: .20),
+              size: 52,
+            ),
+          ),
           Positioned(right: 24, top: 20, child: _CertifiedShield(track: track)),
           Positioned(
             left: 16,
@@ -453,8 +1012,65 @@ class _HeroDots extends StatelessWidget {
   }
 }
 
-class _CloudCluster extends StatelessWidget {
-  const _CloudCluster();
+class _HeroVisualStyle {
+  const _HeroVisualStyle({
+    required this.colors,
+    required this.icon,
+    required this.shapes,
+  });
+
+  final List<Color> colors;
+  final IconData icon;
+  final List<(double, double, double, double)> shapes;
+}
+
+_HeroVisualStyle _heroStyleForTrack(ExamTrack track) {
+  return switch (track.category) {
+    'AI' => const _HeroVisualStyle(
+      colors: [Color(0xFF6D3DFF), Color(0xFF00A6D6)],
+      icon: Icons.psychology_alt_rounded,
+      shapes: [
+        (4, 30, 34, 1),
+        (46, 8, 48, .74),
+        (92, 30, 62, .92),
+        (138, 14, 34, .68),
+      ],
+    ),
+    'Data' => const _HeroVisualStyle(
+      colors: [Color(0xFF2148C0), Color(0xFF00A88E)],
+      icon: Icons.storage_rounded,
+      shapes: [
+        (8, 12, 34, .9),
+        (48, 12, 34, .65),
+        (88, 12, 34, .8),
+        (128, 12, 34, .55),
+        (28, 52, 34, .72),
+        (68, 52, 34, .92),
+        (108, 52, 34, .68),
+      ],
+    ),
+    'Security' => const _HeroVisualStyle(
+      colors: [Color(0xFF8A2C0A), Color(0xFFFFB020)],
+      icon: Icons.security_rounded,
+      shapes: [(10, 22, 58, .75), (70, 4, 74, .42), (122, 28, 50, .6)],
+    ),
+    _ => const _HeroVisualStyle(
+      colors: [Color(0xFF0078D4), Color(0xFF00BCF2)],
+      icon: Icons.cloud_rounded,
+      shapes: [
+        (8, 30, 42, 1),
+        (44, 8, 56, .9),
+        (92, 28, 66, .78),
+        (126, 14, 44, .86),
+      ],
+    ),
+  };
+}
+
+class _HeroBackgroundMark extends StatelessWidget {
+  const _HeroBackgroundMark({required this.style});
+
+  final _HeroVisualStyle style;
 
   @override
   Widget build(BuildContext context) {
@@ -463,20 +1079,15 @@ class _CloudCluster extends StatelessWidget {
       width: 178,
       child: Stack(
         children: [
-          for (final cloud in const [
-            (8.0, 30.0, 42.0),
-            (44.0, 8.0, 56.0),
-            (92.0, 28.0, 66.0),
-            (126.0, 14.0, 44.0),
-          ])
+          for (final shape in style.shapes)
             Positioned(
-              left: cloud.$1,
-              top: cloud.$2,
+              left: shape.$1,
+              top: shape.$2,
               child: Container(
-                height: cloud.$3,
-                width: cloud.$3 * 1.45,
+                height: shape.$3,
+                width: shape.$3 * 1.45,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .22),
+                  color: Colors.white.withValues(alpha: .10 + (.12 * shape.$4)),
                   borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
               ),
@@ -688,9 +1299,10 @@ class _ContinueLearningCard extends StatelessWidget {
 }
 
 class _TopicMiniCard extends StatelessWidget {
-  const _TopicMiniCard({required this.topic});
+  const _TopicMiniCard({required this.topic, required this.onTap});
 
   final StudyTopic topic;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -698,6 +1310,7 @@ class _TopicMiniCard extends StatelessWidget {
     return SizedBox(
       width: 86,
       child: PremiumCard(
+        onTap: onTap,
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Column(
           children: [
@@ -796,6 +1409,122 @@ int _topicDisplayCount(String title) {
   };
 }
 
+String _courseSummaryForTopic(String title) {
+  return switch (title) {
+    'Cloud Concepts' =>
+      'Understand service models, shared responsibility, core Azure services, and how cloud architecture decisions affect cost and reliability.',
+    'AI Fundamentals' =>
+      'Learn core AI workloads, machine learning basics, computer vision, NLP, and responsible AI principles before attempting practice questions.',
+    'Security' =>
+      'Build a foundation in identity, access, threat protection, governance, and compliance concepts used across cloud certification exams.',
+    'Pricing & Support' =>
+      'Review cost planning, subscriptions, service-level agreements, support plans, and governance tools used to control cloud spend.',
+    _ =>
+      'Study the concepts, review the syllabus, and use the documentation list before starting a focused practice session.',
+  };
+}
+
+List<String> _syllabusForTopic(String title) {
+  return switch (title) {
+    'Cloud Concepts' => const [
+      'Cloud benefits, consumption models, and shared responsibility',
+      'IaaS, PaaS, SaaS, and serverless service patterns',
+      'Regions, availability zones, resilience, and disaster recovery',
+      'Core compute, networking, storage, and database services',
+    ],
+    'AI Fundamentals' => const [
+      'Machine learning workloads and model lifecycle basics',
+      'Computer vision, OCR, and image analysis concepts',
+      'Natural language processing and conversational AI',
+      'Responsible AI principles, fairness, privacy, and transparency',
+    ],
+    'Security' => const [
+      'Identity, authentication, authorization, and access control',
+      'Zero Trust, defense in depth, and threat protection',
+      'Governance, compliance, policy, and secure posture management',
+      'Monitoring, alerts, and security operations workflows',
+    ],
+    'Pricing & Support' => const [
+      'Subscriptions, resource groups, tags, and cost organization',
+      'Pricing calculators, total cost of ownership, and budgets',
+      'Service-level agreements, lifecycle, and preview services',
+      'Support plans, service health, and advisory recommendations',
+    ],
+    _ => const [
+      'Core concepts and exam vocabulary',
+      'Common service capabilities and usage scenarios',
+      'Practice examples with explanations',
+      'Review checklist and documentation reading',
+    ],
+  };
+}
+
+List<(String, String)> _documentationForTopic(String title) {
+  return switch (title) {
+    'Cloud Concepts' => const [
+      (
+        'Microsoft Learn: Cloud concepts',
+        'Cloud benefits, models, and service categories',
+      ),
+      (
+        'Azure architecture center',
+        'Reliability, regions, and design guidance',
+      ),
+      (
+        'Azure services overview',
+        'Compute, networking, storage, and databases',
+      ),
+    ],
+    'AI Fundamentals' => const [
+      (
+        'Microsoft Learn: AI fundamentals',
+        'AI workloads and responsible AI concepts',
+      ),
+      (
+        'Azure AI services documentation',
+        'Vision, language, speech, and search services',
+      ),
+      (
+        'Machine learning overview',
+        'Model training, evaluation, and deployment basics',
+      ),
+    ],
+    'Security' => const [
+      (
+        'Microsoft Learn: Security fundamentals',
+        'Identity, compliance, and security concepts',
+      ),
+      (
+        'Microsoft Entra documentation',
+        'Identity and access management guidance',
+      ),
+      (
+        'Microsoft Defender for Cloud',
+        'Cloud security posture and threat protection',
+      ),
+    ],
+    'Pricing & Support' => const [
+      (
+        'Azure pricing documentation',
+        'Pricing, calculators, and cost planning',
+      ),
+      ('Azure support plans', 'Support scope and response expectations'),
+      (
+        'Azure Service Health',
+        'Incidents, advisories, and planned maintenance',
+      ),
+    ],
+    _ => const [
+      (
+        'Microsoft Learn module',
+        'Study the official learning module for this topic',
+      ),
+      ('Product documentation', 'Review service capabilities and limits'),
+      ('Exam skills outline', 'Map the topic back to certification objectives'),
+    ],
+  };
+}
+
 class QuizSetupScreen extends StatefulWidget {
   const QuizSetupScreen({
     super.key,
@@ -832,9 +1561,6 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
 
   ExamTrack get _selectedTrack => _trackForCode(_examType);
 
-  String get _modeLabel =>
-      _mode == QuizMode.practice ? 'Practice Mode' : 'Mock Test';
-
   String get _difficultyLabel => _mode == QuizMode.practice
       ? '${_difficulty.name[0].toUpperCase()}${_difficulty.name.substring(1)}'
       : 'Mixed';
@@ -861,189 +1587,197 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _MockSimulationPanel(
+          _PracticeSetupHero(
             track: _selectedTrack,
             count: count,
+            examType: _examType,
+            mode: _mode,
+            difficulty: _difficulty,
+            difficultyLabel: _difficultyLabel,
+            questionCount: _questionCount,
             loading: widget.loading,
+            onExamChanged: (value) => setState(() => _examType = value),
+            onModeChanged: (value) => setState(() => _mode = value),
+            onDifficultyChanged: (value) => setState(() => _difficulty = value),
+            onQuestionCountChanged: (value) =>
+                setState(() => _questionCount = value),
             onStart: canStart
-                ? () => widget.onStartTrack(
-                    _selectedTrack,
-                    mode: QuizMode.examination,
+                ? () => widget.onStart(
+                    QuizConfig(
+                      mode: _mode,
+                      examType: _examType,
+                      questionCount: math.min(_questionCount, count),
+                      difficulty: _mode == QuizMode.practice
+                          ? _difficulty
+                          : null,
+                    ),
                   )
                 : null,
           ),
-          const SizedBox(height: 16),
-          PremiumCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _ChoiceGroup<QuizMode>(
-                  title: 'Session type',
-                  value: _mode,
-                  options: const {
-                    QuizMode.practice: (
-                      'Practice Mode',
-                      'Filter by difficulty and learn with less pressure',
-                      Icons.track_changes_rounded,
-                    ),
-                    QuizMode.examination: (
-                      'Examination Mode',
-                      'Mixed difficulty with exam-style timing',
-                      Icons.workspace_premium_rounded,
-                    ),
-                  },
-                  onChanged: (value) => setState(() => _mode = value),
-                ),
-                const SizedBox(height: AppSpacing.section),
-                SectionHeader(
-                  title: 'Certification',
-                  subtitle: 'Only tracks with local questions can start.',
-                ),
-                const SizedBox(height: 12),
-                for (final track in _availableExamTracks) ...[
-                  CertificationCard(
-                    track: track,
-                    questionCount: _countForTrack(widget.questionCounts, track),
-                    selected: _examType == track.code,
-                    compact: true,
-                    onTap: () => setState(() => _examType = track.code),
-                    onStart: () {},
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                if (_mode == QuizMode.practice) ...[
-                  const SizedBox(height: 10),
-                  _ChoiceGroup<Difficulty>(
-                    title: 'Difficulty',
-                    value: _difficulty,
-                    options: const {
-                      Difficulty.easy: (
-                        'Easy',
-                        'Basic concepts',
-                        Icons.sentiment_satisfied_rounded,
-                      ),
-                      Difficulty.medium: (
-                        'Medium',
-                        'Scenario practice',
-                        Icons.trending_up_rounded,
-                      ),
-                      Difficulty.hard: (
-                        'Hard',
-                        'Exam pressure',
-                        Icons.local_fire_department_rounded,
-                      ),
-                    },
-                    onChanged: (value) => setState(() => _difficulty = value),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.section),
-                DropdownButtonFormField<int>(
-                  initialValue: _questionCount,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Number of Questions',
-                    prefixIcon: Icon(Icons.format_list_numbered_rounded),
-                  ),
-                  selectedItemBuilder: (context) => const [
-                    Text('5 Questions', overflow: TextOverflow.ellipsis),
-                    Text('10 Questions', overflow: TextOverflow.ellipsis),
-                    Text('20 Questions', overflow: TextOverflow.ellipsis),
-                    Text('50 Questions', overflow: TextOverflow.ellipsis),
-                  ],
-                  items: const [
-                    DropdownMenuItem(value: 5, child: Text('5 Questions')),
-                    DropdownMenuItem(value: 10, child: Text('10 Questions')),
-                    DropdownMenuItem(value: 20, child: Text('20 Questions')),
-                    DropdownMenuItem(value: 50, child: Text('50 Questions')),
-                  ],
-                  onChanged: (value) =>
-                      setState(() => _questionCount = value ?? 10),
-                ),
-                if (widget.error != null) ...[
-                  const SizedBox(height: AppSpacing.card),
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.dense),
-                    decoration: BoxDecoration(
-                      color: colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: colorScheme.onErrorContainer,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            widget.error!,
-                            style: TextStyle(
-                              color: colorScheme.onErrorContainer,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.section),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+          if (widget.error != null) ...[
+            const SizedBox(height: AppSpacing.card),
+            _PracticeErrorMessage(message: widget.error!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PracticeSetupHero extends StatelessWidget {
+  const _PracticeSetupHero({
+    required this.track,
+    required this.count,
+    required this.examType,
+    required this.mode,
+    required this.difficulty,
+    required this.difficultyLabel,
+    required this.questionCount,
+    required this.loading,
+    required this.onExamChanged,
+    required this.onModeChanged,
+    required this.onDifficultyChanged,
+    required this.onQuestionCountChanged,
+    required this.onStart,
+  });
+
+  final ExamTrack track;
+  final int count;
+  final String examType;
+  final QuizMode mode;
+  final Difficulty difficulty;
+  final String difficultyLabel;
+  final int questionCount;
+  final bool loading;
+  final ValueChanged<String> onExamChanged;
+  final ValueChanged<QuizMode> onModeChanged;
+  final ValueChanged<Difficulty> onDifficultyChanged;
+  final ValueChanged<int> onQuestionCountChanged;
+  final VoidCallback? onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final effectiveCount = count == 0 ? 0 : math.min(questionCount, count);
+    return PremiumCard(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [track.accent.withValues(alpha: .96), track.gradientEnd],
+      ),
+      borderColor: Colors.white.withValues(alpha: .16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CertificationBadgeMark(track: track, size: 62),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    StatusBadge(
-                      icon: Icons.badge_rounded,
-                      label: 'Exam: $_examType',
-                      color: _selectedTrack.accent,
+                    Text(
+                      '${track.code} Practice Plan',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                    StatusBadge(
-                      icon: Icons.fact_check_rounded,
-                      label: '$_questionCount questions',
-                      color: AppColors.success,
-                    ),
-                    StatusBadge(
-                      icon: Icons.speed_rounded,
-                      label: _difficultyLabel,
-                      color: AppColors.warning,
-                    ),
-                    StatusBadge(
-                      icon: _mode == QuizMode.practice
-                          ? Icons.track_changes_rounded
-                          : Icons.workspace_premium_rounded,
-                      label: _modeLabel,
-                      color: AppColors.purple,
+                    const SizedBox(height: 3),
+                    Text(
+                      track.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: .82),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: widget.loading || !canStart
-                      ? null
-                      : () => widget.onStart(
-                          QuizConfig(
-                            mode: _mode,
-                            examType: _examType,
-                            questionCount: math.min(_questionCount, count),
-                            difficulty: _mode == QuizMode.practice
-                                ? _difficulty
-                                : null,
-                          ),
-                        ),
-                  icon: widget.loading
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.play_arrow_rounded),
-                  label: Text(
-                    widget.loading
-                        ? 'Preparing...'
-                        : _mode == QuizMode.practice
-                        ? 'Start Practice'
-                        : 'Start Mock Test',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _HeroSetupControls(
+            examType: examType,
+            mode: mode,
+            difficulty: difficulty,
+            questionCount: questionCount,
+            onExamChanged: onExamChanged,
+            onModeChanged: onModeChanged,
+            onDifficultyChanged: onDifficultyChanged,
+            onQuestionCountChanged: onQuestionCountChanged,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  count == 0
+                      ? 'Questions for this track are not available yet.'
+                      : '$effectiveCount questions - $difficultyLabel - explanations included.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: .82),
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: loading ? null : onStart,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: track.accent,
+                ),
+                icon: loading
+                    ? SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.primary,
+                        ),
+                      )
+                    : const Icon(Icons.play_arrow_rounded),
+                label: Text(
+                  loading
+                      ? 'Preparing'
+                      : mode == QuizMode.practice
+                      ? 'Start Practice'
+                      : 'Start Mock Test',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PracticeErrorMessage extends StatelessWidget {
+  const _PracticeErrorMessage({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.dense),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: colorScheme.onErrorContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: colorScheme.onErrorContainer),
             ),
           ),
         ],
@@ -1052,71 +1786,211 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   }
 }
 
-class _MockSimulationPanel extends StatelessWidget {
-  const _MockSimulationPanel({
-    required this.track,
-    required this.count,
-    required this.loading,
-    required this.onStart,
+class _HeroSetupControls extends StatelessWidget {
+  const _HeroSetupControls({
+    required this.examType,
+    required this.mode,
+    required this.difficulty,
+    required this.questionCount,
+    required this.onExamChanged,
+    required this.onModeChanged,
+    required this.onDifficultyChanged,
+    required this.onQuestionCountChanged,
   });
 
-  final ExamTrack track;
-  final int count;
-  final bool loading;
-  final VoidCallback? onStart;
+  final String examType;
+  final QuizMode mode;
+  final Difficulty difficulty;
+  final int questionCount;
+  final ValueChanged<String> onExamChanged;
+  final ValueChanged<QuizMode> onModeChanged;
+  final ValueChanged<Difficulty> onDifficultyChanged;
+  final ValueChanged<int> onQuestionCountChanged;
 
   @override
   Widget build(BuildContext context) {
-    return PremiumCard(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [track.accent.withValues(alpha: .96), AppColors.ink],
-      ),
-      borderColor: Colors.white.withValues(alpha: .12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                StatusBadge(
-                  icon: Icons.timer_rounded,
-                  label: 'Mock Test Screen',
-                  color: Colors.white,
-                  onColor: Colors.white,
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: _GlassDropdown<String>(
+                value: examType,
+                items: [
+                  for (final track in _availableExamTracks)
+                    DropdownMenuItem(
+                      value: track.code,
+                      child: Text(track.code, overflow: TextOverflow.ellipsis),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) onExamChanged(value);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: _GlassDropdown<int>(
+                value: questionCount,
+                items: const [
+                  DropdownMenuItem(value: 5, child: Text('5 Questions')),
+                  DropdownMenuItem(value: 10, child: Text('10 Questions')),
+                  DropdownMenuItem(value: 20, child: Text('20 Questions')),
+                  DropdownMenuItem(value: 50, child: Text('50 Questions')),
+                ],
+                onChanged: (value) {
+                  if (value != null) onQuestionCountChanged(value);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _GlassToggleButton(
+                selected: mode == QuizMode.practice,
+                icon: Icons.track_changes_rounded,
+                label: 'Practice Mode',
+                onTap: () => onModeChanged(QuizMode.practice),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _GlassToggleButton(
+                selected: mode == QuizMode.examination,
+                icon: Icons.workspace_premium_rounded,
+                label: 'Examination Mode',
+                onTap: () => onModeChanged(QuizMode.examination),
+              ),
+            ),
+            if (mode == QuizMode.practice) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GlassDropdown<Difficulty>(
+                  value: difficulty,
+                  items: const [
+                    DropdownMenuItem(
+                      value: Difficulty.easy,
+                      child: Text('Easy'),
+                    ),
+                    DropdownMenuItem(
+                      value: Difficulty.medium,
+                      child: Text('Medium'),
+                    ),
+                    DropdownMenuItem(
+                      value: Difficulty.hard,
+                      child: Text('Hard'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) onDifficultyChanged(value);
+                  },
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '${track.code} simulation',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _GlassDropdown<T> extends StatelessWidget {
+  const _GlassDropdown({
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      isExpanded: true,
+      iconEnabledColor: Colors.white,
+      dropdownColor: const Color(0xFF102D8F),
+      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: .13),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 10,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: .18)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: .38)),
+        ),
+      ),
+      items: items,
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _GlassToggleButton extends StatelessWidget {
+  const _GlassToggleButton({
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: onTap,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: selected ? .24 : .11),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: selected ? .42 : .16),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 17),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     color: Colors.white,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Countdown, mixed difficulty, prediction, and confirmation submit.',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: .78),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          FilledButton(
-            onPressed: loading ? null : onStart,
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: track.accent,
-              minimumSize: const Size(92, 46),
-            ),
-            child: const Text('Start'),
-          ),
-        ],
+        ),
       ),
     );
   }
