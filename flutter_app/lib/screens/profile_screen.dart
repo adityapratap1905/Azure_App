@@ -110,6 +110,162 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showCertificationManager() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return _ProfileBottomSheet(
+          title: 'Certification Library',
+          subtitle: 'Choose the track you want to focus on next.',
+          children: [
+            for (final track in _examTracks)
+              _ProfileSheetTile(
+                icon: track.icon,
+                color: track.accent,
+                title: '${track.code} - ${track.name}',
+                subtitle: track.available
+                    ? '${_countForTrack(widget.questionCounts, track)} questions available'
+                    : 'Question bank in review',
+                trailing: track.available
+                    ? const Icon(Icons.chevron_right_rounded)
+                    : const _SoonPill(),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (track.available) {
+                    widget.onSelectTrack(track);
+                  } else {
+                    _showMessage('${track.code} will be available soon.');
+                  }
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAchievements() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return const _ProfileBottomSheet(
+          title: 'Achievement Progress',
+          subtitle: 'Milestones update as you complete practice sessions.',
+          children: [
+            _ProfileSheetTile(
+              icon: Icons.local_fire_department_rounded,
+              color: AppColors.azure,
+              title: '7 Day Streak',
+              subtitle: 'Complete one practice set every day this week.',
+            ),
+            _ProfileSheetTile(
+              icon: Icons.track_changes_rounded,
+              color: AppColors.purple,
+              title: 'Accuracy Master',
+              subtitle: 'Keep your average score above 80%.',
+            ),
+            _ProfileSheetTile(
+              icon: Icons.school_rounded,
+              color: AppColors.success,
+              title: 'Quick Learner',
+              subtitle: 'Finish 50 focused quizzes.',
+            ),
+            _ProfileSheetTile(
+              icon: Icons.emoji_events_rounded,
+              color: AppColors.warning,
+              title: 'Top Performer',
+              subtitle: 'Reach the top 25 leaderboard positions.',
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showStudyReport() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final score = widget.lastResult?.score ?? 87;
+        return _ProfileBottomSheet(
+          title: 'Study Report',
+          subtitle: 'A quick summary of your current learning momentum.',
+          children: [
+            const _ProfileSheetTile(
+              icon: Icons.access_time_rounded,
+              color: AppColors.azure,
+              title: '42h 30m study time',
+              subtitle: '12% higher than last week.',
+            ),
+            const _ProfileSheetTile(
+              icon: Icons.check_circle_outline_rounded,
+              color: AppColors.success,
+              title: '1,620 questions solved',
+              subtitle: 'Strong coverage across fundamentals.',
+            ),
+            _ProfileSheetTile(
+              icon: Icons.track_changes_rounded,
+              color: AppColors.purple,
+              title: '$score% average accuracy',
+              subtitle: score >= 80
+                  ? 'You are tracking close to exam-ready.'
+                  : 'Review weak areas before mock tests.',
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return _ProfileBottomSheet(
+          title: 'Profile Settings',
+          subtitle: 'Manage app preferences for this device.',
+          children: [
+            _ProfileSheetTile(
+              icon: widget.themeController.isDark
+                  ? Icons.light_mode_rounded
+                  : Icons.dark_mode_rounded,
+              color: AppColors.azure,
+              title: widget.themeController.isDark
+                  ? 'Switch to light mode'
+                  : 'Switch to dark mode',
+              subtitle: 'Theme preference is saved locally.',
+              onTap: () {
+                Navigator.pop(context);
+                widget.themeController.toggle();
+              },
+            ),
+            _ProfileSheetTile(
+              icon: Icons.photo_camera_rounded,
+              color: AppColors.purple,
+              title: 'Update profile photo',
+              subtitle: 'Upload from gallery or take a new photo.',
+              onTap: () {
+                Navigator.pop(context);
+                _showPhotoOptions();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PremiumScrollView(
@@ -118,7 +274,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ProfileTopBar(themeController: widget.themeController),
+          _ProfileTopBar(
+            themeController: widget.themeController,
+            onSettings: _showSettings,
+          ),
           const SizedBox(height: 22),
           _ProfileSummaryCard(
             selectedTrack: widget.selectedTrack,
@@ -133,19 +292,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: 'My Certifications',
             subtitle: 'Studying',
             actionLabel: 'View all',
-            onAction: () {},
+            onAction: _showCertificationManager,
           ),
           const SizedBox(height: 12),
           _CertificationShelf(
             selectedTrack: widget.selectedTrack,
             questionCounts: widget.questionCounts,
             onSelectTrack: widget.onSelectTrack,
+            onAddCertification: _showCertificationManager,
           ),
           const SizedBox(height: 30),
           SectionHeader(
             title: 'Achievements',
             actionLabel: 'View all',
-            onAction: () {},
+            onAction: _showAchievements,
           ),
           const SizedBox(height: 12),
           const _AchievementShelf(),
@@ -153,14 +313,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SectionHeader(
             title: 'Study Insights',
             actionLabel: 'View all',
-            onAction: () {},
+            onAction: _showStudyReport,
           ),
           const SizedBox(height: 12),
           _InsightShelf(lastResult: widget.lastResult),
           const SizedBox(height: 30),
           Text('More', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 10),
-          _MoreList(themeController: widget.themeController),
+          _MoreList(
+            themeController: widget.themeController,
+            onSavedQuestions: () =>
+                _showMessage('Saved questions will appear after bookmarking.'),
+            onDownloads: () =>
+                _showMessage('Offline packs are ready for the selected track.'),
+            onSubscription: () =>
+                _showMessage('You are currently on Pro Plan.'),
+            onPrivacy: () => _showMessage('Privacy policy is stored locally.'),
+            onAbout: () => _showMessage('CloudCert Studio v1.0.0'),
+          ),
         ],
       ),
     );
@@ -168,9 +338,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _ProfileTopBar extends StatelessWidget {
-  const _ProfileTopBar({required this.themeController});
+  const _ProfileTopBar({
+    required this.themeController,
+    required this.onSettings,
+  });
 
   final ThemeController themeController;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +383,7 @@ class _ProfileTopBar extends StatelessWidget {
         _TopActionButton(
           icon: Icons.settings_outlined,
           tooltip: 'Settings',
-          onTap: () {},
+          onTap: onSettings,
         ),
       ],
     );
@@ -693,11 +867,13 @@ class _CertificationShelf extends StatelessWidget {
     required this.selectedTrack,
     required this.questionCounts,
     required this.onSelectTrack,
+    required this.onAddCertification,
   });
 
   final ExamTrack selectedTrack;
   final Map<String, int> questionCounts;
   final ValueChanged<ExamTrack> onSelectTrack;
+  final VoidCallback onAddCertification;
 
   @override
   Widget build(BuildContext context) {
@@ -715,7 +891,7 @@ class _CertificationShelf extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           if (index == visibleTracks.length) {
-            return const _AddCertificationTile();
+            return _AddCertificationTile(onTap: onAddCertification);
           }
           final track = visibleTracks[index];
           return _ProfileCertificationTile(
@@ -818,7 +994,9 @@ class _ProfileCertificationTile extends StatelessWidget {
 }
 
 class _AddCertificationTile extends StatelessWidget {
-  const _AddCertificationTile();
+  const _AddCertificationTile({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -826,6 +1004,7 @@ class _AddCertificationTile extends StatelessWidget {
     return SizedBox(
       width: 150,
       child: PremiumCard(
+        onTap: onTap,
         padding: const EdgeInsets.all(14),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1067,9 +1246,21 @@ class _InsightTile extends StatelessWidget {
 }
 
 class _MoreList extends StatelessWidget {
-  const _MoreList({required this.themeController});
+  const _MoreList({
+    required this.themeController,
+    required this.onSavedQuestions,
+    required this.onDownloads,
+    required this.onSubscription,
+    required this.onPrivacy,
+    required this.onAbout,
+  });
 
   final ThemeController themeController;
+  final VoidCallback onSavedQuestions;
+  final VoidCallback onDownloads;
+  final VoidCallback onSubscription;
+  final VoidCallback onPrivacy;
+  final VoidCallback onAbout;
 
   @override
   Widget build(BuildContext context) {
@@ -1087,39 +1278,44 @@ class _MoreList extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          const _SettingsRow(
+          _SettingsRow(
             icon: Icons.bookmark_border_rounded,
             title: 'Saved Questions',
             subtitle: 'Review bookmarked exam items',
-            trailing: Icon(Icons.chevron_right_rounded),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: onSavedQuestions,
           ),
           const Divider(height: 1),
-          const _SettingsRow(
+          _SettingsRow(
             icon: Icons.download_rounded,
             title: 'Downloads',
             subtitle: 'Offline study packs',
-            trailing: Icon(Icons.chevron_right_rounded),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: onDownloads,
           ),
           const Divider(height: 1),
-          const _SettingsRow(
+          _SettingsRow(
             icon: Icons.workspace_premium_rounded,
             title: 'Subscription',
             subtitle: 'Pro plan',
-            trailing: Icon(Icons.chevron_right_rounded),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: onSubscription,
           ),
           const Divider(height: 1),
-          const _SettingsRow(
+          _SettingsRow(
             icon: Icons.privacy_tip_outlined,
             title: 'Privacy Policy',
             subtitle: 'Data and account settings',
-            trailing: Icon(Icons.chevron_right_rounded),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: onPrivacy,
           ),
           const Divider(height: 1),
-          const _SettingsRow(
+          _SettingsRow(
             icon: Icons.info_outline_rounded,
             title: 'About Us',
             subtitle: 'CloudCert Studio',
-            trailing: Icon(Icons.chevron_right_rounded),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: onAbout,
           ),
         ],
       ),
@@ -1133,17 +1329,19 @@ class _SettingsRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.trailing,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final Widget trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
@@ -1182,6 +1380,130 @@ class _SettingsRow extends StatelessWidget {
           const SizedBox(width: 8),
           trailing,
         ],
+      ),
+    );
+    if (onTap == null) return row;
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      onTap: onTap,
+      child: row,
+    );
+  }
+}
+
+class _ProfileBottomSheet extends StatelessWidget {
+  const _ProfileBottomSheet({
+    required this.title,
+    required this.subtitle,
+    required this.children,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .72,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ...children,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileSheetTile extends StatelessWidget {
+  const _ProfileSheetTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        height: 42,
+        width: 42,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
+        child: Icon(icon, color: color, size: 21),
+      ),
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w900),
+      ),
+      subtitle: Text(
+        subtitle,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: colorScheme.onSurfaceVariant),
+      ),
+      trailing: trailing,
+      onTap: onTap,
+    );
+  }
+}
+
+class _SoonPill extends StatelessWidget {
+  const _SoonPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: AppColors.warning.withValues(alpha: .22)),
+      ),
+      child: Text(
+        'Soon',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: AppColors.warning,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }

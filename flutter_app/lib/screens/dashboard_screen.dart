@@ -481,8 +481,12 @@ class _DashboardHeader extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 15)),
-                    const SizedBox(width: 3),
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 16,
+                      color: AppColors.danger,
+                    ),
+                    const SizedBox(width: 4),
                     Text(
                       '$streakDays',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
