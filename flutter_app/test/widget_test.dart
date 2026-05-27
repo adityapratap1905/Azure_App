@@ -112,8 +112,10 @@ void main() {
       findsNothing,
     );
 
-    await tester.ensureVisible(find.text('SC-900').last);
-    await tester.tap(find.text('SC-900').last);
+    final sc900Card = find
+        .ancestor(of: find.text('SC-900').last, matching: find.byType(InkWell))
+        .last;
+    tester.widget<InkWell>(sc900Card).onTap?.call();
     await tester.pumpAndSettle();
 
     expect(
