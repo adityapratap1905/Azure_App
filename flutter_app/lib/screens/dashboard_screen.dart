@@ -34,6 +34,10 @@ class DashboardScreen extends StatelessWidget {
     ].map(_trackForCode).toList(growable: false);
     final continueTrack = _trackForCode('AI-900');
     final topics = _homeTopics(allQuestions).take(4).toList();
+    final readyTracks = _examTracks
+        .where((track) => track.available)
+        .take(3)
+        .toList(growable: false);
     return PremiumScrollView(
       maxWidth: 430,
       child: Column(
@@ -51,6 +55,15 @@ class DashboardScreen extends StatelessWidget {
             loading: loading,
             onExploreTrack: (track) =>
                 _openCertificationLearning(context, track),
+          ),
+          const SizedBox(height: AppSpacing.section),
+          _HomeProgressSnapshot(
+            selectedTrack: selectedTrack,
+            totalQuestions: questionCounts['total'] ?? allQuestions.length,
+            lastResult: lastResult,
+            onOpenLearning: () =>
+                _openCertificationLearning(context, selectedTrack),
+            onOpenPracticeStudio: () => onOpenPracticeStudio(selectedTrack),
           ),
           const SizedBox(height: AppSpacing.section),
           SectionHeader(
@@ -85,6 +98,13 @@ class DashboardScreen extends StatelessWidget {
                 _openCertificationLearning(context, continueTrack),
           ),
           const SizedBox(height: AppSpacing.section),
+          _DailyStudyPlanCard(
+            track: selectedTrack,
+            onOpenLearning: () =>
+                _openCertificationLearning(context, selectedTrack),
+            onOpenPracticeStudio: () => onOpenPracticeStudio(selectedTrack),
+          ),
+          const SizedBox(height: AppSpacing.section),
           SectionHeader(
             title: 'Study by Topic',
             actionLabel: 'View all',
@@ -103,6 +123,22 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: AppSpacing.section),
+          SectionHeader(
+            title: 'Readiness insights',
+            subtitle: 'Next certifications to focus on',
+          ),
+          const SizedBox(height: 10),
+          for (final track in readyTracks) ...[
+            _ReadinessInsightTile(
+              track: track,
+              questionCount: _displayQuestionCount(questionCounts, track),
+              selected: selectedTrack.code == track.code,
+              onOpenLearning: () => _openCertificationLearning(context, track),
+              onOpenPracticeStudio: () => onOpenPracticeStudio(track),
+            ),
+            const SizedBox(height: 10),
+          ],
         ],
       ),
     );
@@ -433,6 +469,382 @@ class DashboardScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _HomeProgressSnapshot extends StatelessWidget {
+  const _HomeProgressSnapshot({
+    required this.selectedTrack,
+    required this.totalQuestions,
+    required this.lastResult,
+    required this.onOpenLearning,
+    required this.onOpenPracticeStudio,
+  });
+
+  final ExamTrack selectedTrack;
+  final int totalQuestions;
+  final QuizResult? lastResult;
+  final VoidCallback onOpenLearning;
+  final VoidCallback onOpenPracticeStudio;
+
+  @override
+  Widget build(BuildContext context) {
+    final scoreLabel = lastResult == null ? 'New' : '${lastResult!.score}%';
+    return Row(
+      children: [
+        Expanded(
+          child: _HomeMetricCard(
+            icon: Icons.workspace_premium_rounded,
+            label: 'Selected',
+            value: selectedTrack.code,
+            color: selectedTrack.accent,
+            onTap: onOpenLearning,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _HomeMetricCard(
+            icon: Icons.quiz_rounded,
+            label: 'Questions',
+            value: totalQuestions == 0 ? '65+' : '$totalQuestions',
+            color: AppColors.purple,
+            onTap: onOpenPracticeStudio,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _HomeMetricCard(
+            icon: Icons.insights_rounded,
+            label: 'Last score',
+            value: scoreLabel,
+            color: AppColors.success,
+            onTap: onOpenPracticeStudio,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeMetricCard extends StatelessWidget {
+  const _HomeMetricCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return PremiumCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.dense),
+      borderColor: color.withValues(alpha: .24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyStudyPlanCard extends StatelessWidget {
+  const _DailyStudyPlanCard({
+    required this.track,
+    required this.onOpenLearning,
+    required this.onOpenPracticeStudio,
+  });
+
+  final ExamTrack track;
+  final VoidCallback onOpenLearning;
+  final VoidCallback onOpenPracticeStudio;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return PremiumCard(
+      padding: const EdgeInsets.all(AppSpacing.card),
+      borderColor: track.accent.withValues(alpha: .22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 42,
+                width: 42,
+                decoration: BoxDecoration(
+                  color: track.accent.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                ),
+                child: Icon(Icons.calendar_month_rounded, color: track.accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Today\'s study plan',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'A focused path for ${track.code}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              StatusBadge(
+                icon: Icons.local_fire_department_rounded,
+                label: '18 min',
+                color: AppColors.warning,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _PlanStep(
+            number: 1,
+            title: 'Read one module',
+            subtitle: 'Review definitions before practice',
+            color: track.accent,
+          ),
+          const SizedBox(height: 9),
+          _PlanStep(
+            number: 2,
+            title: 'Check weak concepts',
+            subtitle: 'Focus on services, pricing, and governance',
+            color: AppColors.purple,
+          ),
+          const SizedBox(height: 9),
+          _PlanStep(
+            number: 3,
+            title: 'Start a short practice set',
+            subtitle: 'Use Practice Studio when ready',
+            color: AppColors.success,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onOpenLearning,
+                  icon: const Icon(Icons.menu_book_rounded, size: 18),
+                  label: const Text('Learn'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onOpenPracticeStudio,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: track.accent,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.fitness_center_rounded, size: 18),
+                  label: const Text('Open Studio'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanStep extends StatelessWidget {
+  const _PlanStep({
+    required this.number,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+  });
+
+  final int number;
+  final String title;
+  final String subtitle;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          height: 28,
+          width: 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+          ),
+          child: Text(
+            '$number',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReadinessInsightTile extends StatelessWidget {
+  const _ReadinessInsightTile({
+    required this.track,
+    required this.questionCount,
+    required this.selected,
+    required this.onOpenLearning,
+    required this.onOpenPracticeStudio,
+  });
+
+  final ExamTrack track;
+  final int questionCount;
+  final bool selected;
+  final VoidCallback onOpenLearning;
+  final VoidCallback onOpenPracticeStudio;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final readiness = (track.readiness * 100).round();
+    return PremiumCard(
+      onTap: onOpenLearning,
+      padding: const EdgeInsets.all(AppSpacing.dense),
+      borderColor: selected ? track.accent.withValues(alpha: .46) : null,
+      child: Row(
+        children: [
+          CertificationBadgeMark(track: track, size: 48),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${track.code} readiness',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '$readiness%',
+                      style: TextStyle(
+                        color: track.accent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                LinearProgressIndicator(
+                  value: track.readiness,
+                  minHeight: 5,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  color: track.accent,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  '$questionCount questions ready - ${_nextFocusForTrack(track)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Open Practice Studio',
+            onPressed: onOpenPracticeStudio,
+            icon: Icon(Icons.fitness_center_rounded, color: track.accent),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1445,6 +1857,17 @@ String _courseSummaryForTopic(String title) {
       'Review cost planning, subscriptions, service-level agreements, support plans, and governance tools used to control cloud spend.',
     _ =>
       'Study the concepts, review the syllabus, and use the documentation list before starting a focused practice session.',
+  };
+}
+
+String _nextFocusForTrack(ExamTrack track) {
+  return switch (track.code) {
+    'AZ-900' => 'review governance and pricing',
+    'AI-900' => 'review responsible AI',
+    'DP-700' => 'review Fabric pipelines',
+    'DP-900' => 'review relational data',
+    'SC-900' => 'review identity basics',
+    _ => 'review core objectives',
   };
 }
 
