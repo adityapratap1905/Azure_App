@@ -17,6 +17,7 @@ import 'services/theme_controller.dart';
 part 'theme/app_theme.dart';
 part 'screens/dashboard_screen.dart';
 part 'screens/topics_screen.dart';
+part 'screens/certification_learning_screen.dart';
 part 'screens/quiz_screen.dart';
 part 'screens/analysis_screen.dart';
 part 'screens/profile_screen.dart';
@@ -314,7 +315,7 @@ class _SplashMascotPainter extends CustomPainter {
 
 enum AppStep { setup, quiz, results }
 
-enum AppTab { home, topics, practice, analytics, profile }
+enum AppTab { home, topics, learning, practice, analytics, profile }
 
 class QuizHome extends StatefulWidget {
   const QuizHome({
@@ -333,6 +334,7 @@ class QuizHome extends StatefulWidget {
 class _QuizHomeState extends State<QuizHome> {
   AppStep _step = AppStep.setup;
   AppTab _tab = AppTab.home;
+  AppTab _learningReturnTab = AppTab.home;
   QuizConfig _config = const QuizConfig(
     mode: QuizMode.practice,
     examType: 'AZ-900',
@@ -350,6 +352,7 @@ class _QuizHomeState extends State<QuizHome> {
   String? _error;
 
   ExamTrack get _selectedTrack => _trackForCode(_config.examType);
+  ExamTrack get _learningTrack => _trackForCode(_config.examType);
 
   @override
   void initState() {
@@ -478,6 +481,24 @@ class _QuizHomeState extends State<QuizHome> {
     });
   }
 
+  void _openLearningForTrack(ExamTrack track) {
+    if (!track.available) {
+      _showUnavailableTrack(track);
+      return;
+    }
+    setState(() {
+      _learningReturnTab = _tab == AppTab.learning ? _learningReturnTab : _tab;
+      _config = QuizConfig(
+        mode: _config.mode,
+        examType: track.code,
+        questionCount: _config.questionCount,
+        difficulty: _config.difficulty,
+      );
+      _tab = AppTab.learning;
+      _error = null;
+    });
+  }
+
   void _showUnavailableTrack(ExamTrack track) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -518,6 +539,7 @@ class _QuizHomeState extends State<QuizHome> {
         loading: _loading,
         onSelectTrack: _selectTrack,
         onViewAllExams: () => setState(() => _tab = AppTab.topics),
+        onOpenLearning: _openLearningForTrack,
         onOpenPracticeStudio: _openPracticeStudioForTrack,
       ),
       AppTab.topics => TopicsScreen(
@@ -525,6 +547,13 @@ class _QuizHomeState extends State<QuizHome> {
         questions: _allQuestions,
         questionCounts: _questionCounts,
         onSelectTrack: _selectTrack,
+        onOpenLearning: _openLearningForTrack,
+        onOpenPracticeStudio: _openPracticeStudioForTrack,
+      ),
+      AppTab.learning => CertificationLearningScreen(
+        track: _learningTrack,
+        questionCount: _displayQuestionCount(_questionCounts, _learningTrack),
+        onBack: () => setState(() => _tab = _learningReturnTab),
         onOpenPracticeStudio: _openPracticeStudioForTrack,
       ),
       AppTab.practice => _buildPracticeTab(),

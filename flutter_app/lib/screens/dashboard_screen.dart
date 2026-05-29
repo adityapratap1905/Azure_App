@@ -10,6 +10,7 @@ class DashboardScreen extends StatelessWidget {
     required this.loading,
     required this.onSelectTrack,
     required this.onViewAllExams,
+    required this.onOpenLearning,
     required this.onOpenPracticeStudio,
   });
 
@@ -20,6 +21,7 @@ class DashboardScreen extends StatelessWidget {
   final bool loading;
   final ValueChanged<ExamTrack> onSelectTrack;
   final VoidCallback onViewAllExams;
+  final ValueChanged<ExamTrack> onOpenLearning;
   final ValueChanged<ExamTrack> onOpenPracticeStudio;
 
   @override
@@ -117,12 +119,7 @@ class DashboardScreen extends StatelessWidget {
       );
       return;
     }
-    showCertificationLearningSheet(
-      context: context,
-      track: track,
-      questionCount: _displayQuestionCount(questionCounts, track),
-      onOpenPracticeStudio: onOpenPracticeStudio,
-    );
+    onOpenLearning(track);
   }
 
   void _showCourseDetails(BuildContext context, StudyTopic topic) {
@@ -436,167 +433,6 @@ class DashboardScreen extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-void showCertificationLearningSheet({
-  required BuildContext context,
-  required ExamTrack track,
-  required int questionCount,
-  required ValueChanged<ExamTrack> onOpenPracticeStudio,
-}) {
-  final syllabus = _syllabusForTrack(track);
-  final docs = _documentationForTrack(track);
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) {
-      final colorScheme = Theme.of(context).colorScheme;
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.sizeOf(context).height * .82,
-            ),
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                Row(
-                  children: [
-                    CertificationBadgeMark(track: track, size: 58),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${track.code}: ${track.name}',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'Learning path before practice',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  track.description,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _LearningMetricChip(
-                        icon: Icons.menu_book_rounded,
-                        label: '$questionCount questions',
-                        color: track.accent,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _LearningMetricChip(
-                        icon: Icons.trending_up_rounded,
-                        label: '${(track.readiness * 100).round()}% ready',
-                        color: AppColors.success,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                SectionHeader(title: 'What to learn first'),
-                const SizedBox(height: 10),
-                for (var index = 0; index < syllabus.length; index++)
-                  _SyllabusTile(
-                    index: index + 1,
-                    title: syllabus[index],
-                    color: track.accent,
-                  ),
-                const SizedBox(height: 16),
-                SectionHeader(title: 'Documentation'),
-                const SizedBox(height: 10),
-                for (final doc in docs)
-                  _DocumentationTile(title: doc.$1, subtitle: doc.$2),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    onOpenPracticeStudio(track);
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: track.accent,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 46),
-                  ),
-                  icon: const Icon(Icons.fitness_center_rounded),
-                  label: const Text('Go to Practice Studio'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
-  );
-}
-
-class _LearningMetricChip extends StatelessWidget {
-  const _LearningMetricChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: color.withValues(alpha: .22)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1647,47 +1483,6 @@ List<String> _syllabusForTopic(String title) {
   };
 }
 
-List<String> _syllabusForTrack(ExamTrack track) {
-  return switch (track.code) {
-    'AZ-900' => const [
-      'Describe cloud concepts, shared responsibility, and cloud models',
-      'Review core Azure architectural components and global infrastructure',
-      'Identify Azure compute, networking, storage, and database services',
-      'Understand security, governance, cost management, and support',
-    ],
-    'AI-900' => const [
-      'Recognize machine learning workloads and model lifecycle basics',
-      'Review computer vision, NLP, speech, and generative AI workloads',
-      'Understand Azure AI services and common implementation patterns',
-      'Apply responsible AI principles and governance expectations',
-    ],
-    'DP-700' => const [
-      'Plan and implement Microsoft Fabric lakehouse solutions',
-      'Build data pipelines, transformations, and orchestration flows',
-      'Manage warehouses, semantic models, and data governance',
-      'Monitor performance, security, and operational reliability',
-    ],
-    'DP-900' => const [
-      'Describe core data concepts and analytics workloads',
-      'Compare relational and non-relational data on Azure',
-      'Understand modern data warehouse and analytics services',
-      'Review Azure data governance, security, and visualization basics',
-    ],
-    'SC-900' => const [
-      'Learn identity, access, and Microsoft Entra fundamentals',
-      'Review security, compliance, and privacy concepts',
-      'Understand Microsoft security and compliance solution areas',
-      'Map governance and risk scenarios to Microsoft cloud services',
-    ],
-    _ => const [
-      'Review the exam objectives and core service vocabulary',
-      'Learn the major platform capabilities and usage scenarios',
-      'Study governance, security, pricing, and operational expectations',
-      'Use practice questions only after reviewing the learning path',
-    ],
-  };
-}
-
 List<(String, String)> _documentationForTopic(String title) {
   return switch (title) {
     'Cloud Concepts' => const [
@@ -1750,56 +1545,6 @@ List<(String, String)> _documentationForTopic(String title) {
       ),
       ('Product documentation', 'Review service capabilities and limits'),
       ('Exam skills outline', 'Map the topic back to certification objectives'),
-    ],
-  };
-}
-
-List<(String, String)> _documentationForTrack(ExamTrack track) {
-  return switch (track.code) {
-    'AZ-900' => const [
-      ('Microsoft Learn AZ-900 path', 'Azure fundamentals modules and labs'),
-      ('Azure services overview', 'Core services, regions, and service models'),
-      ('Azure pricing and governance', 'Cost tools, policy, support, and SLAs'),
-    ],
-    'AI-900' => const [
-      ('Microsoft Learn AI-900 path', 'AI fundamentals learning modules'),
-      (
-        'Azure AI services docs',
-        'Vision, speech, language, and search services',
-      ),
-      (
-        'Responsible AI resources',
-        'Fairness, reliability, privacy, and safety',
-      ),
-    ],
-    'DP-700' => const [
-      (
-        'Microsoft Fabric learning path',
-        'Lakehouse, warehouse, and pipeline basics',
-      ),
-      (
-        'Fabric data engineering docs',
-        'Data ingestion, transformation, and modeling',
-      ),
-      ('Fabric administration docs', 'Monitoring, governance, and security'),
-    ],
-    'DP-900' => const [
-      ('Microsoft Learn DP-900 path', 'Azure data fundamentals modules'),
-      ('Azure database docs', 'Relational and non-relational data services'),
-      ('Azure analytics docs', 'Data lake, warehouse, and BI concepts'),
-    ],
-    'SC-900' => const [
-      (
-        'Microsoft Learn SC-900 path',
-        'Security, compliance, and identity modules',
-      ),
-      ('Microsoft Entra docs', 'Identity, access, and governance fundamentals'),
-      ('Microsoft Purview docs', 'Compliance, privacy, and risk concepts'),
-    ],
-    _ => const [
-      ('Official exam study guide', 'Skills outline and objective domains'),
-      ('Product documentation', 'Core services and scenario walkthroughs'),
-      ('Learning modules', 'Guided lessons before practice questions'),
     ],
   };
 }

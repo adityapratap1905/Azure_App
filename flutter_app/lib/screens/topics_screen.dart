@@ -7,6 +7,7 @@ class TopicsScreen extends StatefulWidget {
     required this.questions,
     required this.questionCounts,
     required this.onSelectTrack,
+    required this.onOpenLearning,
     required this.onOpenPracticeStudio,
   });
 
@@ -14,6 +15,7 @@ class TopicsScreen extends StatefulWidget {
   final List<Question> questions;
   final Map<String, int> questionCounts;
   final ValueChanged<ExamTrack> onSelectTrack;
+  final ValueChanged<ExamTrack> onOpenLearning;
   final ValueChanged<ExamTrack> onOpenPracticeStudio;
 
   @override
@@ -53,12 +55,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
       );
       return;
     }
-    showCertificationLearningSheet(
-      context: context,
-      track: track,
-      questionCount: _displayQuestionCount(widget.questionCounts, track),
-      onOpenPracticeStudio: widget.onOpenPracticeStudio,
-    );
+    widget.onOpenLearning(track);
   }
 
   void _showSearch() {

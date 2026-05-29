@@ -100,19 +100,16 @@ void main() {
     await tester.tap(find.text('Learn AZ-900'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Learning path before practice'), findsOneWidget);
-    expect(find.text('What to learn first'), findsOneWidget);
+    expect(find.text('AZ-900 learning'), findsOneWidget);
+    expect(find.text('Course modules'), findsOneWidget);
+    expect(find.text('1. Cloud concepts'), findsOneWidget);
+    expect(find.text('3. Core Azure services'), findsOneWidget);
     expect(
       find.text('Which Azure service is used for virtual machines?'),
       findsNothing,
     );
 
-    await tester.scrollUntilVisible(
-      find.text('Go to Practice Studio'),
-      180,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.tap(find.text('Go to Practice Studio'));
+    await tester.tap(find.text('Go to Practice Studio').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Practice studio'), findsOneWidget);
@@ -142,7 +139,8 @@ void main() {
     await tester.tap(find.text('Learn').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Learning path before practice'), findsOneWidget);
+    expect(find.text('AZ-900 learning'), findsOneWidget);
+    expect(find.text('Before practice checklist'), findsOneWidget);
     expect(
       find.text('Which Azure service is used for virtual machines?'),
       findsNothing,
