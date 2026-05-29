@@ -79,6 +79,76 @@ void main() {
     expect(find.text('100%'), findsWidgets);
   });
 
+  testWidgets('home exam action opens learning before practice studio', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(
+      AzureQuizApp(
+        repository: QuestionRepository(bundle: _FakeQuestionBundle()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Which Azure service is used for virtual machines?'),
+      findsNothing,
+    );
+
+    await tester.ensureVisible(find.text('Learn AZ-900'));
+    await tester.tap(find.text('Learn AZ-900'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Learning path before practice'), findsOneWidget);
+    expect(find.text('What to learn first'), findsOneWidget);
+    expect(
+      find.text('Which Azure service is used for virtual machines?'),
+      findsNothing,
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Go to Practice Studio'),
+      180,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Go to Practice Studio'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Practice studio'), findsOneWidget);
+    expect(find.text('Start Practice'), findsOneWidget);
+    expect(
+      find.text('Which Azure service is used for virtual machines?'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('exams tab opens learning instead of starting quiz', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(
+      AzureQuizApp(
+        repository: QuestionRepository(bundle: _FakeQuestionBundle()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Exams'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Learn').first);
+    await tester.tap(find.text('Learn').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Learning path before practice'), findsOneWidget);
+    expect(
+      find.text('Which Azure service is used for virtual machines?'),
+      findsNothing,
+    );
+  });
+
   testWidgets('theme toggle changes app theme', (tester) async {
     SharedPreferences.setMockInitialValues({});
 

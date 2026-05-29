@@ -457,29 +457,25 @@ class _QuizHomeState extends State<QuizHome> {
     });
   }
 
-  Future<void> _startTrack(
-    ExamTrack track, {
-    QuizMode mode = QuizMode.practice,
-    Difficulty? difficulty,
-  }) async {
-    final availableQuestions = _questionCounts[track.code] ?? 0;
-    if (!track.available || availableQuestions == 0) {
+  void _openPracticeStudioForTrack(ExamTrack track) {
+    if (!track.available) {
       _showUnavailableTrack(track);
       return;
     }
-    final questionCount = mode == QuizMode.examination
-        ? math.min(50, availableQuestions)
-        : math.min(_config.questionCount, availableQuestions);
-    await _startQuiz(
-      QuizConfig(
-        mode: mode,
+    setState(() {
+      _config = QuizConfig(
+        mode: _config.mode,
         examType: track.code,
-        questionCount: questionCount,
-        difficulty: mode == QuizMode.practice
-            ? difficulty ?? _config.difficulty ?? Difficulty.easy
-            : null,
-      ),
-    );
+        questionCount: _config.questionCount,
+        difficulty: _config.difficulty,
+      );
+      _step = AppStep.setup;
+      _tab = AppTab.practice;
+      _questions = const [];
+      _answers.clear();
+      _currentIndex = 0;
+      _error = null;
+    });
   }
 
   void _showUnavailableTrack(ExamTrack track) {
@@ -522,17 +518,14 @@ class _QuizHomeState extends State<QuizHome> {
         loading: _loading,
         onSelectTrack: _selectTrack,
         onViewAllExams: () => setState(() => _tab = AppTab.topics),
-        onStartPractice: (track) => _startTrack(track),
-        onStartMock: (track) => _startTrack(track, mode: QuizMode.examination),
+        onOpenPracticeStudio: _openPracticeStudioForTrack,
       ),
       AppTab.topics => TopicsScreen(
         selectedTrack: _selectedTrack,
         questions: _allQuestions,
         questionCounts: _questionCounts,
         onSelectTrack: _selectTrack,
-        onStartTopic: (track, difficulty) =>
-            _startTrack(track, difficulty: difficulty),
-        onStartMock: (track) => _startTrack(track, mode: QuizMode.examination),
+        onOpenPracticeStudio: _openPracticeStudioForTrack,
       ),
       AppTab.practice => _buildPracticeTab(),
       AppTab.analytics =>
@@ -574,7 +567,6 @@ class _QuizHomeState extends State<QuizHome> {
       AppStep.results => ResultsScreen(result: _result!, onRestart: _restart),
       AppStep.setup => QuizSetupScreen(
         onStart: _startQuiz,
-        onStartTrack: _startTrack,
         questionCounts: _questionCounts,
         loading: _loading,
         error: _error,

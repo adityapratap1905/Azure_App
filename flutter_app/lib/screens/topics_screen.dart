@@ -7,16 +7,14 @@ class TopicsScreen extends StatefulWidget {
     required this.questions,
     required this.questionCounts,
     required this.onSelectTrack,
-    required this.onStartTopic,
-    required this.onStartMock,
+    required this.onOpenPracticeStudio,
   });
 
   final ExamTrack selectedTrack;
   final List<Question> questions;
   final Map<String, int> questionCounts;
   final ValueChanged<ExamTrack> onSelectTrack;
-  final void Function(ExamTrack track, Difficulty difficulty) onStartTopic;
-  final ValueChanged<ExamTrack> onStartMock;
+  final ValueChanged<ExamTrack> onOpenPracticeStudio;
 
   @override
   State<TopicsScreen> createState() => _TopicsScreenState();
@@ -44,18 +42,23 @@ class _TopicsScreenState extends State<TopicsScreen> {
   int _count(ExamTrack track) =>
       _displayQuestionCount(widget.questionCounts, track);
 
-  void _startTrack(ExamTrack track) {
+  void _openTrackLearning(ExamTrack track) {
     widget.onSelectTrack(track);
     if (!track.available || _countForTrack(widget.questionCounts, track) == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${track.code} question bank is coming soon.'),
+          content: Text('${track.code} learning content is coming soon.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
-    widget.onStartTopic(track, Difficulty.easy);
+    showCertificationLearningSheet(
+      context: context,
+      track: track,
+      questionCount: _displayQuestionCount(widget.questionCounts, track),
+      onOpenPracticeStudio: widget.onOpenPracticeStudio,
+    );
   }
 
   void _showSearch() {
@@ -83,7 +86,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () {
                       Navigator.pop(context);
-                      _startTrack(track);
+                      _openTrackLearning(track);
                     },
                   ),
               ],
@@ -170,8 +173,8 @@ class _TopicsScreenState extends State<TopicsScreen> {
                     track: track,
                     questionCount: _count(track),
                     selected: widget.selectedTrack.code == track.code,
-                    onTap: () => widget.onSelectTrack(track),
-                    onStart: () => _startTrack(track),
+                    onTap: () => _openTrackLearning(track),
+                    onStart: () => _openTrackLearning(track),
                   ),
                 );
               },
@@ -236,7 +239,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
               track: track,
               questionCount: _count(track),
               selected: widget.selectedTrack.code == track.code,
-              onTap: () => _startTrack(track),
+              onTap: () => _openTrackLearning(track),
             ),
             const SizedBox(height: 10),
           ],
@@ -465,7 +468,7 @@ class _ExamShowcaseCard extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              child: Text(enabled ? 'Begin' : 'Notify'),
+              child: Text(enabled ? 'Learn' : 'Notify'),
             ),
           ),
         ],
